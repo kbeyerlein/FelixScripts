@@ -1,21 +1,30 @@
+#!/bin/zsh
+
 # These are filenames and variables you have to change
 # Also you will have to replace the peak finding and integration parameters below.
 
-files='myfiles'
-stream = 'mystream'
-pdb = 'mypdb'
-out = 'myout' # file where output of indexing analysis will be directed.
-geom = 'mygeom'
-sg = ’96’ # space group number
+# number of images to be processed
+N='200'
+files='files.lst'
+stream='felix.stream'
+pdb='tutorial.cell'
+out='indexing_analysis.out' # file where output of indexing analysis will be directed.
+geom="refined.geom"
+sg='4' # space group number
+
+list_events -i ${files} -g ${geom} -o events.lst
+head -n $N events.lst > tmp.lst
 
 # Felix variables to try
 # This is a rough search, use results to do a finer search.
 # Also play with min_uniqueness and completeness to clean up false crystals.
 
-ln='100 200 300’
-lf='0.1 0.3 0.5 0.7'
-lu='0.1 0.2 0.3'
-ls='1'
+ln=('30' '50' '100' '150')
+lf=('0.2' '0.4' '0.8')
+lu=('0.4' '0.2' '0.8')
+ls=('1')
+lq=('0.001')
+
 
 for n in $ln; do
 
@@ -25,36 +34,41 @@ for u in $lu; do
 
 for s in $ls; do
 
-echo "Iteration: n=" $n " f=" $f " u=" $u " s=" $s >> ${out}
+for q in $lq; do
 
+# echo "Iteration: n=" $n " f=" $f " u=" $u " s=" $s >> ${out}
+# tmp_stream=${stream}'_'$n'_'$f'_'$u'_'$s'_'$q
+
+tmp_stream=${stream}
+# echo ${tmp_stream} >> ${out}
 
 indexamajig \
---input=${files} \
---output=${stream} \
---peaks=zaef \
---indexing=felix-bad-noretry \
+--input=tmp.lst \
+--output=${tmp_stream} \
+--peaks=cxi \
+-j 6 \
+--indexing=dirax \
 --pdb=${pdb} \
 --geometry=${geom} \
---integration=rings-rescut-sat \
---int-radius=2,3,4 \
---threshold=1 \
---min-gradient=1 \
---min-snr=1 \
---index-options="spacegroup=${sg},\
+--integration=rings-rescut \
+--felix-options="spacegroup=${sg},\
 n_voxels=$n,\
 test_fraction=$f,\
 sigma_tth=$u,\
+maxtime=5,\
 sigma_eta=$u,\
 sigma_omega=$u,\
 n_sigmas=$s,\
 min_uniqueness=0.5,\
-min_completeness=0.5,\
-min_measurements=20”
+min_completeness=$q,\
+min_measurements=15"
 
-# Small script to analyse the indexing results. 
-./indexing_analysis.sh ${stream} &>> ${out} 
+# # Small script to analyse the indexing results.
+./indexing_analysis.sh ${tmp_stream} &>> ${out}
+
 
 done
 done
 done
-done 
+done
+done
